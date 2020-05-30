@@ -43,7 +43,8 @@ mongoose.set("useCreateIndex", true);
 const userSchema = new mongoose.Schema({
   email: String,
   password: String,
-  googleId: String // the googleId field is used to avoid creating multiple users in the db everytime they login
+  googleId: String, // the googleId field is used to avoid creating multiple users in the db everytime they login
+  secret: String
 });
 
 //set plugins
@@ -111,16 +112,41 @@ app.get("/register", function(req, res) {
 });
 
 app.get("/secrets", function(req, res) {
-  if (req.isAuthenticated()) {
-    res.render("secrets");
-  } else {
-    res.redirect("/login");
-  }
+  // get all users that have secrets
+  User.find({"secret": {$ne: null}}, function(err, users) {
+    if(err) {
+      console.log(err);
+    } else if(users) {
+      res.render("secrets", {usersWithSecrets: users});
+    }
+  });
 });
 
 app.get("/logout", function(req, res) {
   req.logout();
   res.redirect("/");
+});
+
+app.get("/submit", function(req, res) {
+  if (req.isAuthenticated()) {
+    res.render("submit");
+  } else {
+    res.redirect("/login");
+  }
+});
+
+app.post("/submit", function(req, res) {
+  const secret = req.body.secret;
+  User.findById(req.user.id, function(err, user) {
+    if(err) {
+      console.log(err);
+    } else if(user) {
+      user.secret = secret;
+      user.save(function() {
+        res.redirect("/secrets");
+      });
+    }
+  });
 });
 
 app.post("/register", function(req, res) {
